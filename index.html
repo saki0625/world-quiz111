@@ -2,47 +2,49 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>111ヶ国世界クイズ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>世界地図クイズ 111</title>
 <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
 <script src="https://cdn.amcharts.com/lib/4/maps.js"></script>
 <script src="https://cdn.amcharts.com/lib/4/geodata/worldLow.js"></script>
 <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
 <style>
 body { font-family: sans-serif; text-align: center; margin: 0; background: #f4f7f6; }
-.container { max-width: 900px; margin: 20px auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+.container { max-width: 900px; margin: 10px auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; overflow: hidden; min-height: 90vh; }
 
-.quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 10px; }
-.home-btn { padding: 8px 15px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; }
-.progress-text { font-size: 18px; font-weight: bold; color: #555; }
+.quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.home-btn { padding: 8px 12px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+.progress-text { font-size: 14px; font-weight: bold; color: #555; text-align: right; }
 
-#chartdiv { width: 100%; height: 400px; background: #e0f0ff; border-radius: 10px; margin-bottom: 20px; }
-#start-screen { padding: 50px 20px; }
-#quiz-screen { display: none; min-height: 600px; }
+#chartdiv { width: 100%; height: 300px; background: #e0f0ff; border-radius: 10px; margin-bottom: 10px; }
+#start-screen { padding: 30px 10px; }
+#quiz-screen { display: none; }
 
 #result-screen {
 display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-background: rgba(255,255,255,0.95); z-index: 100; flex-direction: column;
+background: rgba(255,255,255,0.98); z-index: 100; flex-direction: column;
 justify-content: center; align-items: center;
 }
 
-.btn { padding: 12px 24px; font-size: 18px; margin: 8px; cursor: pointer; border: none; border-radius: 8px; background: #00d1b2; color: white; }
+.btn { padding: 12px 20px; font-size: 18px; margin: 5px; cursor: pointer; border: none; border-radius: 8px; background: #00d1b2; color: white; -webkit-appearance: none; }
 .btn:hover { opacity: 0.8; }
 
-#question-text { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
-#target-name { font-size: 20px; color: #666; margin-bottom: 15px; height: 24px; }
+#question-text { font-size: 28px; font-weight: bold; margin-bottom: 5px; }
+#target-name { font-size: 18px; color: #666; margin-bottom: 10px; height: 22px; }
 
-.input-area { margin: 20px 0; height: 60px; }
-input { padding: 12px; font-size: 24px; width: 250px; border: 2px solid #00d1b2; border-radius: 8px; text-align: center; }
-#unit { font-size: 24px; font-weight: bold; margin-left: 10px; }
+.input-area { margin: 15px 0; min-height: 60px; }
+input { padding: 12px; font-size: 20px; width: 80%; max-width: 300px; border: 2px solid #00d1b2; border-radius: 8px; text-align: center; outline: none; }
+#unit { font-size: 20px; font-weight: bold; margin-left: 5px; }
 
-#feedback { font-size: 22px; font-weight: bold; height: 35px; margin-top: 10px; }
+#feedback { font-size: 20px; font-weight: bold; min-height: 30px; margin-top: 5px; }
+#next-btn { display: none; width: 80%; max-width: 300px; background: #ff8c00; font-weight: bold; }
 </style>
 </head>
 <body>
 
 <div class="container">
 <div id="start-screen">
-<h1>111ヶ国世界クイズ</h1>
+<h1>世界地図クイズ 111</h1>
 <p>地域を選択してください</p>
 <button class="btn" onclick="setupGame('Asia')">アジア</button>
 <button class="btn" onclick="setupGame('Africa')">アフリカ</button>
@@ -50,32 +52,33 @@ input { padding: 12px; font-size: 24px; width: 250px; border: 2px solid #00d1b2;
 <button class="btn" onclick="setupGame('NorthAmerica')">北アメリカ</button>
 <button class="btn" onclick="setupGame('SouthAmerica')">南アメリカ</button>
 <button class="btn" onclick="setupGame('Oceania')">オセアニア</button>
-<br>
+<br><br>
 <button class="btn" style="background:#444;" onclick="setupGame('All')">すべての国(111ヶ国)</button>
 </div>
 
 <div id="quiz-screen">
 <div id="result-screen">
-<h2 style="font-size: 40px; color: #00d1b2;">お疲れ様ー！</h2>
-<p style="font-size: 24px; margin: 20px 0;"><span id="total-result-num"></span> 問中 <span id="final-score">0</span> 問正解！</p>
+<h2 style="font-size: 32px; color: #00d1b2;">お疲れ様でした！</h2>
+<p style="font-size: 22px; margin: 15px 0;"><span id="total-result-num"></span> 問中 <span id="final-score">0</span> 問正解！</p>
 <button class="btn" onclick="goHome()" style="background:#666;">ホームに戻る</button>
 </div>
 
 <div class="quiz-header">
-<button class="home-btn" onclick="goHome()">◀ ホームへ戻る</button>
+<button class="home-btn" onclick="goHome()">◀ 戻る</button>
 <div class="progress-text">
-<span id="current-country-num">0</span> / <span id="total-country-num">0</span> ヶ国目
+<span id="current-country-num">0</span> / <span id="total-country-num">0</span> ヶ国目<br>
 (<span id="score">0</span> / <span id="total-num">0</span> 問正解)
 </div>
 </div>
 
 <div id="chartdiv"></div>
-<div id="question-text">国名</div>
-<div id="target-name">赤く光っている国はどこ？</div>
+<div id="question-text"></div>
+<div id="target-name"></div>
 
 <div class="input-area">
-<input type="text" id="answer-input" autocomplete="off">
+<input type="text" id="answer-input" autocomplete="off" placeholder="答えを入力">
 <span id="unit"></span>
+<button id="next-btn" class="btn" onclick="handleNext()">次へ進む</button>
 </div>
 
 <div id="feedback"></div>
@@ -85,4 +88,3 @@ input { padding: 12px; font-size: 24px; width: 250px; border: 2px solid #00d1b2;
 <script src="main.js"></script>
 </body>
 </html>
-
