@@ -52,7 +52,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-chart.zoomDuration = 800;
+chart.zoomDuration = 800; // ズームの移動スピード
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -62,16 +62,15 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 地図データが完全に読み込まれ、グラフィックの配置が確定してからクイズを開始
-polygonSeries.events.on("datavalidated", () => {
+// 1問目のデータをセット
 nextQuestionData();
-// 最初の国へ確実にズーム（安全のために1秒待つ）
+
+// 🔥【超強力修正】地図が画面に出てから1.2秒後に「絶対に強制ズーム」させる
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 1000);
-});
+}, 1200);
 }
 
 function nextQuestionData() {
@@ -99,18 +98,21 @@ else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯 どの国でも必ず画面中央にアップにする関数
+// 🎯 対象の国を「確実に」画面中央にばんっと引き寄せる関数
 function focusOnCountry(countryId) {
+if (!chart || !polygonSeries) return;
+
 let dataItem = polygonSeries.getDataItemById(countryId);
 if (dataItem && dataItem.mapPolygon) {
 let polygon = dataItem.mapPolygon;
 
-// 巨大な国は2倍、普通の国は5倍で中央に寄せる
+// 巨大な国は2倍、普通の国は5倍にズーム
 let zoomLevel = 5;
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 2;
 }
 
+// 画面中央へ強制移動
 chart.zoomToMapObject(polygon, zoomLevel, true);
 }
 }
@@ -158,9 +160,13 @@ solvedIds.push(currentCountry.id);
 currentIndex++;
 
 nextQuestionData();
+
+// 🔥【超強力修正】次の国へ行くときも、0.3秒だけ待って確実に「中央へバンッ」と移動させる
+setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
+}, 300);
 }
 }
 
@@ -189,4 +195,6 @@ checkAnswer();
 }
 }
 });
+
+
 
