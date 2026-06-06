@@ -13,7 +13,7 @@ const countries = [
 { id: "AU", name: "オーストラリア", pop: "2600", unit: "万人", area: "Oceania" }, { id: "PG", name: "パプアニューギニア", pop: "1000", unit: "万人", area: "Oceania" }, { id: "NZ", name: "ニュージーランド", pop: "510", unit: "万人", area: "Oceania" }, { id: "FJ", name: "フィジー", pop: "92", unit: "万人", area: "Oceania" }, { id: "KI", name: "キリバス", pop: "13", unit: "万人", area: "Oceania" }, { id: "TO", name: "トンガ", pop: "10", unit: "万人", area: "Oceania" }, { id: "NR", name: "ナウル", pop: "1.2", unit: "万人", area: "Oceania" }, { id: "TV", name: "ツバル", pop: "1", unit: "万人", area: "Oceania" }
 ];
 
-let chart, polygonSeries;
+let chart, polygonSeries, imageSeries, pinBullet;
 let currentList = [];
 let currentIndex = 0;
 let currentCountry = null;
@@ -51,6 +51,9 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
+
+chart.zoomDuration = 800; // 移動スピード
+
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
 polygonSeries.exclude = ["AQ"];
@@ -58,6 +61,25 @@ let template = polygonSeries.mapPolygons.template;
 template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
+
+// ピン設定
+imageSeries = chart.series.push(new am4maps.MapImageSeries());
+let imageTemplate = imageSeries.mapImages.template;
+imageTemplate.propertyFields.longitude = "longitude";
+imageTemplate.propertyFields.latitude = "latitude";
+imageTemplate.nonScaling = true;
+
+pinBullet = imageTemplate.createChild(am4core.Circle);
+pinBullet.radius = 7;
+pinBullet.fill = am4core.color("#ff3333");
+pinBullet.stroke = am4core.color("#ffffff");
+pinBullet.strokeWidth = 2;
+
+// 点滅
+let animation = pinBullet.animations.push(new am4core.Animation(pinBullet, { property: "scale", from: 1, to: 1.6 }, 600));
+animation.yoyo = true;
+animation.loop = true;
+
 chart.events.on("ready", () => nextQuestion());
 }
 
@@ -70,10 +92,13 @@ currentCountry = currentList[currentIndex];
 quizMode = "name";
 isMistakenInThisTurn = false;
 document.getElementById("current-country-num").innerText = currentIndex + 1;
+
 updateMapColors();
 document.getElementById("question-text").innerText = "国名";
 document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
 showInputMode();
+
+focusOnCountry(currentCountry.id); // 自動ズーム
 }
 
 function updateMapColors() {
@@ -83,6 +108,35 @@ if (cid === currentCountry.id) p.fill = am4core.color("#ff4444");
 else if (solvedIds.includes(cid)) p.fill = am4core.color("#00d1b2");
 else p.fill = am4core.color("#aaaaaa");
 });
+}
+
+// ズームピン
+function focusOnCountry(countryId) {
+imageSeries.data = [];
+
+setTimeout(() => {
+let dataItem = polygonSeries.getDataItemById(countryId);
+if (dataItem && dataItem.mapPolygon) {
+let polygon = dataItem.mapPolygon;
+
+// 小さすぎて見えない国のリスト
+const tinyCountries = ["VA", "TV", "NR", "CY", "SG", "BN", "KI", "TO", "FJ", "LU", "IS", "JM"];
+let zoomLevel = 4; // 普通の国
+
+if (tinyCountries.includes(countryId)) {
+zoomLevel = 65; // 65倍
+let geoPoint = polygon.visualCentroid;
+imageSeries.data = [{
+"latitude": geoPoint.latitude,
+"longitude": geoPoint.longitude
+}];
+} else if (polygon.getBounds().width < 10) {
+zoomLevel = 12; // 小さい国
+}
+
+chart.zoomToMapObject(polygon, zoomLevel, true);
+}
+}, 300);
 }
 
 function checkAnswer() {
@@ -126,11 +180,16 @@ showInputMode();
 } else if (quizMode === "result_pop") {
 solvedIds.push(currentCountry.id);
 currentIndex++;
+
+chart.goHome(); // カメラ戻す
+setTimeout(() => {
 nextQuestion();
+}, 600);
 }
 }
 
 function showFinalResult() {
+chart.goHome();
 const resScreen = document.getElementById("result-screen");
 resScreen.style.display = "flex";
 document.getElementById("total-result-num").innerText = currentList.length * 2;
@@ -154,3 +213,4 @@ checkAnswer();
 }
 }
 });
+
