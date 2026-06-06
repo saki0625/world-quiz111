@@ -52,7 +52,7 @@ chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
 
-chart.zoomDuration = 800; // 移動スピード
+chart.zoomDuration = 700; // ズームするスピード
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -62,7 +62,7 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// ピン設定
+// ピン
 imageSeries = chart.series.push(new am4maps.MapImageSeries());
 let imageTemplate = imageSeries.mapImages.template;
 imageTemplate.propertyFields.longitude = "longitude";
@@ -75,11 +75,11 @@ pinBullet.fill = am4core.color("#ff3333");
 pinBullet.stroke = am4core.color("#ffffff");
 pinBullet.strokeWidth = 2;
 
-// 点滅
 let animation = pinBullet.animations.push(new am4core.Animation(pinBullet, { property: "scale", from: 1, to: 1.6 }, 600));
 animation.yoyo = true;
 animation.loop = true;
 
+//
 chart.events.on("ready", () => nextQuestion());
 }
 
@@ -98,7 +98,10 @@ document.getElementById("question-text").innerText = "国名";
 document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
 showInputMode();
 
-focusOnCountry(currentCountry.id); // 自動ズーム
+// 
+setTimeout(() => {
+focusOnCountry(currentCountry.id);
+}, 400);
 }
 
 function updateMapColors() {
@@ -110,33 +113,37 @@ else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// ズームピン
+// 
 function focusOnCountry(countryId) {
-imageSeries.data = [];
+imageSeries.data = []; // ピンをリセット
 
-setTimeout(() => {
 let dataItem = polygonSeries.getDataItemById(countryId);
 if (dataItem && dataItem.mapPolygon) {
 let polygon = dataItem.mapPolygon;
 
-// 小さすぎて見えない国のリスト
+// 極小国
 const tinyCountries = ["VA", "TV", "NR", "CY", "SG", "BN", "KI", "TO", "FJ", "LU", "IS", "JM"];
-let zoomLevel = 4; // 普通の国
+let zoomLevel = 4; // 👈 
 
-if (tinyCountries.includes(countryId)) {
-zoomLevel = 65; // 65倍
+// 
+if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
+zoomLevel = 1.5;
+}
+// 小さい国ズームピン
+else if (tinyCountries.includes(countryId)) {
+zoomLevel = 60; // 60倍ズーム
 let geoPoint = polygon.visualCentroid;
 imageSeries.data = [{
 "latitude": geoPoint.latitude,
 "longitude": geoPoint.longitude
 }];
 } else if (polygon.getBounds().width < 10) {
-zoomLevel = 12; // 小さい国
+zoomLevel = 10; // 中くらいの国は10倍
 }
 
+// 選択された国を画面の真ん中に持ってくる
 chart.zoomToMapObject(polygon, zoomLevel, true);
 }
-}, 300);
 }
 
 function checkAnswer() {
@@ -181,10 +188,12 @@ showInputMode();
 solvedIds.push(currentCountry.id);
 currentIndex++;
 
-chart.goHome(); // カメラ戻す
+chart.goHome(); // 一度全体に戻す
+
+// 全体に戻るアニメーション（600ms）が終わってから、次の国へ進む
 setTimeout(() => {
 nextQuestion();
-}, 600);
+}, 700);
 }
 }
 
