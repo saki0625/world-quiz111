@@ -13,7 +13,7 @@ const countries = [
 { id: "AU", name: "オーストラリア", pop: "2600", unit: "万人", area: "Oceania" }, { id: "PG", name: "パプアニューギニア", pop: "1000", unit: "万人", area: "Oceania" }, { id: "NZ", name: "ニュージーランド", pop: "510", unit: "万人", area: "Oceania" }, { id: "FJ", name: "フィジー", pop: "92", unit: "万人", area: "Oceania" }, { id: "KI", name: "キリバス", pop: "13", unit: "万人", area: "Oceania" }, { id: "TO", name: "トンガ", pop: "10", unit: "万人", area: "Oceania" }, { id: "NR", name: "ナウル", pop: "1.2", unit: "万人", area: "Oceania" }, { id: "TV", name: "ツバル", pop: "1", unit: "万人", area: "Oceania" }
 ];
 
-let chart, polygonSeries, imageSeries, pinBullet;
+let chart, polygonSeries;
 let currentList = [];
 let currentIndex = 0;
 let currentCountry = null;
@@ -28,6 +28,8 @@ currentList.sort(() => Math.random() - 0.5);
 
 document.getElementById("total-country-num").innerText = currentList.length;
 document.getElementById("total-num").innerText = currentList.length * 2;
+
+// 1. 先に画面を「タイトル」から「クイズ画面」に切り替えて、地図エリアを表示させる
 document.getElementById("start-screen").style.display = "none";
 document.getElementById("quiz-screen").style.display = "block";
 document.getElementById("result-screen").style.display = "none";
@@ -52,7 +54,7 @@ chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
 
-chart.zoomDuration = 600; // ズームの移動スピードを少し軽快に
+chart.zoomDuration = 800; // ズームするスピード
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -62,24 +64,7 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 📍 小さい国用の赤丸ピン
-imageSeries = chart.series.push(new am4maps.MapImageSeries());
-let imageTemplate = imageSeries.mapImages.template;
-imageTemplate.propertyFields.longitude = "longitude";
-imageTemplate.propertyFields.latitude = "latitude";
-imageTemplate.nonScaling = true;
-
-pinBullet = imageTemplate.createChild(am4core.Circle);
-pinBullet.radius = 6;
-pinBullet.fill = am4core.color("#ff3333");
-pinBullet.stroke = am4core.color("#ffffff");
-pinBullet.strokeWidth = 1.5;
-
-let animation = pinBullet.animations.push(new am4core.Animation(pinBullet, { property: "scale", from: 1, to: 1.6 }, 600));
-animation.yoyo = true;
-animation.loop = true;
-
-// 地図の準備が整ったら最初のクイズを開始
+// 地図の準備が100%終わったらクイズを開始
 polygonSeries.events.on("inited", () => {
 nextQuestion();
 });
@@ -100,10 +85,10 @@ document.getElementById("question-text").innerText = "国名";
 document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
 showInputMode();
 
-// ⏳ 地図の描画やカメラリセットが「完全に終わるのを待ってから」安全にズームさせる（0.5秒待つ）
+// ⏳ 地図が画面に見えている状態で、0.4秒待ってから確実に中央へズームさせる
 setTimeout(() => {
 focusOnCountry(currentCountry.id);
-}, 500);
+}, 400);
 }
 
 function updateMapColors() {
@@ -115,31 +100,19 @@ else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯 安全第一・自動ズーム処理
+// 🎯 どの国でも必ず画面中央にアップにするシンプルな関数
 function focusOnCountry(countryId) {
-imageSeries.data = []; // ピンリセット
-
 let dataItem = polygonSeries.getDataItemById(countryId);
 if (dataItem && dataItem.mapPolygon) {
 let polygon = dataItem.mapPolygon;
 
-const tinyCountries = ["VA", "TV", "NR", "CY", "SG", "BN", "KI", "TO", "FJ", "LU", "IS", "JM"];
-let zoomLevel = 4.5; // 普通の国
-
+// どの国でも一律で「5倍」の大きさで画面中央にアップにする（ロシアなどの巨大国は優しく2倍）
+let zoomLevel = 5;
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
-zoomLevel = 1.2; // 巨大国は引き気味
-} else if (tinyCountries.includes(countryId)) {
-zoomLevel = 180; // トンガやツバルは180倍の超鬼ズーム
-
-let geoPoint = polygon.visualCentroid;
-imageSeries.data = [{
-"latitude": geoPoint.latitude,
-"longitude": geoPoint.longitude
-}];
-} else if (polygon.getBounds().width < 10) {
-zoomLevel = 10; // 中くらいの国
+zoomLevel = 2;
 }
 
+// カメラを対象の国へスムーズに移動
 chart.zoomToMapObject(polygon, zoomLevel, true);
 }
 }
@@ -185,14 +158,7 @@ showInputMode();
 } else if (quizMode === "result_pop") {
 solvedIds.push(currentCountry.id);
 currentIndex++;
-
-// 🔄 【確実にリセット】まずカメラを全体に戻す！
-chart.goHome();
-
-// 全体に戻るアニメーション（600ms）を待ってから、安全に次の問題を呼び出す
-setTimeout(() => {
-nextQuestion();
-}, 650);
+nextQuestion(); // ダイレクトに次の国の中央アップへスライド移動
 }
 }
 
@@ -221,4 +187,5 @@ checkAnswer();
 }
 }
 });
+
 
