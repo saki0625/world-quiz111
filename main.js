@@ -29,7 +29,6 @@ currentList.sort(() => Math.random() - 0.5);
 document.getElementById("total-country-num").innerText = currentList.length;
 document.getElementById("total-num").innerText = currentList.length * 2;
 
-// 1. 先に画面を「タイトル」から「クイズ画面」に切り替えて、地図エリアを表示させる
 document.getElementById("start-screen").style.display = "none";
 document.getElementById("quiz-screen").style.display = "block";
 document.getElementById("result-screen").style.display = "none";
@@ -53,8 +52,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-
-chart.zoomDuration = 800; // ズームするスピード
+chart.zoomDuration = 800;
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -64,13 +62,19 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 地図の準備が100%終わったらクイズを開始
-polygonSeries.events.on("inited", () => {
-nextQuestion();
+// 地図データが完全に読み込まれ、グラフィックの配置が確定してからクイズを開始
+polygonSeries.events.on("datavalidated", () => {
+nextQuestionData();
+// 最初の国へ確実にズーム（安全のために1秒待つ）
+setTimeout(() => {
+if (currentCountry) {
+focusOnCountry(currentCountry.id);
+}
+}, 1000);
 });
 }
 
-function nextQuestion() {
+function nextQuestionData() {
 if (currentIndex >= currentList.length) {
 showFinalResult();
 return;
@@ -84,11 +88,6 @@ updateMapColors();
 document.getElementById("question-text").innerText = "国名";
 document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
 showInputMode();
-
-// ⏳ 地図が画面に見えている状態で、0.4秒待ってから確実に中央へズームさせる
-setTimeout(() => {
-focusOnCountry(currentCountry.id);
-}, 400);
 }
 
 function updateMapColors() {
@@ -100,19 +99,18 @@ else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯 どの国でも必ず画面中央にアップにするシンプルな関数
+// 🎯 どの国でも必ず画面中央にアップにする関数
 function focusOnCountry(countryId) {
 let dataItem = polygonSeries.getDataItemById(countryId);
 if (dataItem && dataItem.mapPolygon) {
 let polygon = dataItem.mapPolygon;
 
-// どの国でも一律で「5倍」の大きさで画面中央にアップにする（ロシアなどの巨大国は優しく2倍）
+// 巨大な国は2倍、普通の国は5倍で中央に寄せる
 let zoomLevel = 5;
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 2;
 }
 
-// カメラを対象の国へスムーズに移動
 chart.zoomToMapObject(polygon, zoomLevel, true);
 }
 }
@@ -158,7 +156,11 @@ showInputMode();
 } else if (quizMode === "result_pop") {
 solvedIds.push(currentCountry.id);
 currentIndex++;
-nextQuestion(); // ダイレクトに次の国の中央アップへスライド移動
+
+nextQuestionData();
+if (currentCountry) {
+focusOnCountry(currentCountry.id);
+}
 }
 }
 
@@ -187,5 +189,4 @@ checkAnswer();
 }
 }
 });
-
 
