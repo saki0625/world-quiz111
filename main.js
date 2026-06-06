@@ -52,7 +52,7 @@ chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
 
-chart.zoomDuration = 700; // ズームするスピード
+chart.zoomDuration = 800; // ズームの移動スピード
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -62,7 +62,7 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// ピン
+// 📍 小さい国用の赤丸ピン
 imageSeries = chart.series.push(new am4maps.MapImageSeries());
 let imageTemplate = imageSeries.mapImages.template;
 imageTemplate.propertyFields.longitude = "longitude";
@@ -70,17 +70,19 @@ imageTemplate.propertyFields.latitude = "latitude";
 imageTemplate.nonScaling = true;
 
 pinBullet = imageTemplate.createChild(am4core.Circle);
-pinBullet.radius = 7;
+pinBullet.radius = 6;
 pinBullet.fill = am4core.color("#ff3333");
 pinBullet.stroke = am4core.color("#ffffff");
-pinBullet.strokeWidth = 2;
+pinBullet.strokeWidth = 1.5;
 
 let animation = pinBullet.animations.push(new am4core.Animation(pinBullet, { property: "scale", from: 1, to: 1.6 }, 600));
 animation.yoyo = true;
 animation.loop = true;
 
-//
-chart.events.on("ready", () => nextQuestion());
+// ⚡ 【超重要】地図の描画が「100%完全に終わったイベント」をキャッチしてから1問目を始める
+polygonSeries.events.on("inited", () => {
+nextQuestion();
+});
 }
 
 function nextQuestion() {
@@ -98,10 +100,10 @@ document.getElementById("question-text").innerText = "国名";
 document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
 showInputMode();
 
-// 
+// 地図の準備が万全な状態でズームを実行する（100ミリ秒だけ安全のために待つ）
 setTimeout(() => {
 focusOnCountry(currentCountry.id);
-}, 400);
+}, 100);
 }
 
 function updateMapColors() {
@@ -113,35 +115,33 @@ else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 
+// 🎯 全国家対応・確実自動ズーム処理
 function focusOnCountry(countryId) {
-imageSeries.data = []; // ピンをリセット
+imageSeries.data = []; // ピンリセット
 
 let dataItem = polygonSeries.getDataItemById(countryId);
 if (dataItem && dataItem.mapPolygon) {
 let polygon = dataItem.mapPolygon;
 
-// 極小国
+// 🏝️ トンガ（TO）を追加！さらに見えない超ミニ国家たち
 const tinyCountries = ["VA", "TV", "NR", "CY", "SG", "BN", "KI", "TO", "FJ", "LU", "IS", "JM"];
-let zoomLevel = 4; // 👈 
+let zoomLevel = 5; // 普通の国は5倍
 
-// 
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
-zoomLevel = 1.5;
-}
-// 小さい国ズームピン
-else if (tinyCountries.includes(countryId)) {
-zoomLevel = 60; // 60倍ズーム
+zoomLevel = 1.2; // 巨大国家は引き気味に
+} else if (tinyCountries.includes(countryId)) {
+zoomLevel = 180; // 👈 トンガやツバルが見えるように「180倍」まで限界突破ズーム！！
+
 let geoPoint = polygon.visualCentroid;
 imageSeries.data = [{
 "latitude": geoPoint.latitude,
 "longitude": geoPoint.longitude
 }];
 } else if (polygon.getBounds().width < 10) {
-zoomLevel = 10; // 中くらいの国は10倍
+zoomLevel = 12; // 中くらいの国
 }
 
-// 選択された国を画面の真ん中に持ってくる
+// カメラを対象国にしっかりズームさせる
 chart.zoomToMapObject(polygon, zoomLevel, true);
 }
 }
@@ -187,13 +187,7 @@ showInputMode();
 } else if (quizMode === "result_pop") {
 solvedIds.push(currentCountry.id);
 currentIndex++;
-
-chart.goHome(); // 一度全体に戻す
-
-// 全体に戻るアニメーション（600ms）が終わってから、次の国へ進む
-setTimeout(() => {
-nextQuestion();
-}, 700);
+nextQuestion(); // ダイレクトに次の国へ移動
 }
 }
 
@@ -222,4 +216,5 @@ checkAnswer();
 }
 }
 });
+
 
