@@ -62,19 +62,17 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 先にクイズのデータ（国名など）を画面にセットしておく
+// 1問目のデータをセット
 nextQuestionData();
-
-// 🔥【ここが一番の修正！】地図データが完全に読み込まれた瞬間に、もう一度だけ色を塗り直す！
-// これで1番目の国がグレーで上書きされるバグを絶対に防ぎます
-polygonSeries.events.on("datavalidated", () => {
-updateMapColors();
-});
 
 // 最初の国へ「強制移動」
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
+
+// 🔥【大本命の修正】ズームが完了したこの瞬間に、強制的に赤色を上書きする！
+// 地図の準備が完全に終わった後なので、絶対にグレーに負けません。
+updateMapColors();
 }
 }, 1200);
 }
