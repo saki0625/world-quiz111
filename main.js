@@ -13,8 +13,7 @@ const countries = [
 { id: "AU", name: "オーストラリア", pop: "2600", unit: "万人", area: "Oceania" }, { id: "PG", name: "パプアニューギニア", pop: "1000", unit: "万人", area: "Oceania" }, { id: "NZ", name: "ニュージーランド", pop: "510", unit: "万人", area: "Oceania" }, { id: "FJ", name: "フィジー", pop: "92", unit: "万人", area: "Oceania" }, { id: "KI", name: "キリバス", pop: "13", unit: "万人", area: "Oceania" }, { id: "TO", name: "トンガ", pop: "10", unit: "万人", area: "Oceania" }, { id: "NR", name: "ナウル", pop: "1.2", unit: "万人", area: "Oceania" }, { id: "TV", name: "ツバル", pop: "1", unit: "万人", area: "Oceania" }
 ];
 
-
-let chart, polygonSeries, pinSeries;
+let chart, polygonSeries;
 let currentList = [];
 let currentIndex = 0;
 let currentCountry = null;
@@ -53,7 +52,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-chart.zoomDuration = 800;
+chart.zoomDuration = 700;
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -63,24 +62,10 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 📍 ピン（目印）の設定
-pinSeries = chart.series.push(new am4maps.MapImagesSeries());
-let pinTemplate = pinSeries.mapImages.template;
-pinTemplate.propertyFields.latitude = "latitude";
-pinTemplate.propertyFields.longitude = "longitude";
-
-let pinIcon = pinTemplate.createChild(am4core.MapPin);
-pinIcon.fill = am4core.color("#ea4335"); // 赤
-pinIcon.stroke = am4core.color("#ffffff"); // 白フチ
-pinIcon.strokeWidth = 1;
-pinIcon.radius = 12;
-
-pinSeries.zIndex = 100;
-
-// 🚀【超確実化】余計なイベント待ちは無し！即座に1問目をセットする
+// 1問目のデータをセット
 nextQuestionData();
 
-// 地図が画面に描画されるのを少しだけ待ってから、確実に中央へドカン！
+// 最初の国へ強制移動
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
@@ -98,57 +83,22 @@ quizMode = "name";
 isMistakenInThisTurn = false;
 document.getElementById("current-country-num").innerText = currentIndex + 1;
 
-updateMapColorsAndPin();
+updateMapColors();
 document.getElementById("question-text").innerText = "国名";
-document.getElementById("target-name").innerText = "ピンが刺さっている赤色の国はどこ？";
+document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
 showInputMode();
 }
 
-// 小さい国の手動座標データ
-const specialCoords = {
-"SG": { lat: 1.35, lon: 103.82 },
-"VA": { lat: 41.90, lon: 12.45 },
-"LU": { lat: 49.81, lon: 6.13 },
-"CY": { lat: 35.12, lon: 33.42 },
-"BN": { lat: 4.53, lon: 114.72 },
-"FJ": { lat: -17.71, lon: 178.06 },
-"KI": { lat: -1.87, lon: -157.36 },
-"TO": { lat: -21.17, lon: -175.20 },
-"NR": { lat: -0.52, lon: 166.93 },
-"TV": { lat: -7.10, lon: 177.64 },
-"JM": { lat: 18.10, lon: -77.29 }
-};
-
-function updateMapColorsAndPin() {
-pinSeries.data = [];
-let pinAdded = false;
-
-if (specialCoords[currentCountry.id]) {
-pinSeries.data.push({
-latitude: specialCoords[currentCountry.id].lat,
-longitude: specialCoords[currentCountry.id].lon
-});
-pinAdded = true;
-}
-
+function updateMapColors() {
 polygonSeries.mapPolygons.each(p => {
 const cid = p.dataItem.dataContext.id;
-if (cid === currentCountry.id) {
-p.fill = am4core.color("#ff4444");
-
-if (!pinAdded) {
-pinSeries.data.push({
-latitude: p.visualLatitude,
-longitude: p.visualLongitude
-});
-}
-}
+if (cid === currentCountry.id) p.fill = am4core.color("#ff4444");
 else if (solvedIds.includes(cid)) p.fill = am4core.color("#00d1b2");
 else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯 小さい国は最高150倍まで拡大するズーム
+// 🎯【核心の修正】サボるシステムに無理やり「中央へバンッ！」を実行させる関数
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
@@ -162,21 +112,9 @@ targetPolygon = p;
 if (targetPolygon) {
 chart.goHome(0);
 
-let zoomLevel = 12;
-
-if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR" || countryId === "AU") {
+let zoomLevel = 7;
+if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 3;
-} else if (countryId === "IN" || countryId === "KZ" || countryId === "DZ" || countryId === "CD") {
-zoomLevel = 5;
-} else if (countryId === "JP" || countryId === "ZA" || countryId === "FR" || countryId === "DE") {
-zoomLevel = 8;
-}
-
-if (countryId === "SG" || countryId === "LU" || countryId === "CY" || countryId === "BN" || countryId === "JM") {
-zoomLevel = 60;
-}
-if (countryId === "VA" || countryId === "NR" || countryId === "TV" || countryId === "KI" || countryId === "TO" || countryId === "FJ") {
-zoomLevel = 150;
 }
 
 chart.zoomToMapObject(targetPolygon, zoomLevel, true);
@@ -231,12 +169,11 @@ setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 500);
+}, 400);
 }
 }
 
 function showFinalResult() {
-pinSeries.data = [];
 chart.goHome();
 const resScreen = document.getElementById("result-screen");
 resScreen.style.display = "flex";
