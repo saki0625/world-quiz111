@@ -62,24 +62,19 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 🗺️【安全・安心】右下に世界地図全体の場所がわかるミニマップを表示！
-chart.overviewMap = new am4maps.OverviewMap();
-chart.overviewMap.series.push(polygonSeries);
-chart.overviewMap.align = "right";
-chart.overviewMap.valign = "bottom";
-chart.overviewMap.width = 150;
-chart.overviewMap.height = 100;
-chart.overviewMap.background.fill = am4core.color("#ffffff");
-chart.overviewMap.background.fillOpacity = 0.8;
-
-// 1問目のデータをセット
+// 先にクイズのデータ（国名など）を画面にセットしておく
 nextQuestionData();
+
+// 🔥【ここが一番の修正！】地図データが完全に読み込まれた瞬間に、もう一度だけ色を塗り直す！
+// これで1番目の国がグレーで上書きされるバグを絶対に防ぎます
+polygonSeries.events.on("datavalidated", () => {
+updateMapColors();
+});
 
 // 最初の国へ「強制移動」
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
-updateMapColors(); // 1問目から絶対に赤く光らせる
 }
 }, 1200);
 }
@@ -123,16 +118,9 @@ targetPolygon = p;
 if (targetPolygon) {
 chart.goHome(0);
 
-// 基本の拡大率は7倍
 let zoomLevel = 7;
-
-// 巨大な国は画面からはみ出さないように3倍
-if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR" || countryId === "AU") {
+if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 3;
-}
-// 小さい国は見えやすいように自動で25倍までグーンと大きくズーム！
-else if (countryId === "SG" || countryId === "VA" || countryId === "LU" || countryId === "BN" || countryId === "FJ" || countryId === "TV" || countryId === "NR") {
-zoomLevel = 25;
 }
 
 chart.zoomToMapObject(targetPolygon, zoomLevel, true);
@@ -216,5 +204,4 @@ checkAnswer();
 }
 }
 });
-
 
