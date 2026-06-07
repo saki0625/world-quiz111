@@ -52,7 +52,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-chart.zoomDuration = 700; // 移動スピードを少しキビキビに
+chart.zoomDuration = 700;
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -62,8 +62,14 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 1問目のデータをセット
+// 先にクイズのデータ（国名など）を画面にセットしておく
 nextQuestionData();
+
+// 🔥【ここが一番の修正！】地図データが完全に読み込まれた瞬間に、もう一度だけ色を塗り直す！
+// これで1番目の国がグレーで上書きされるバグを絶対に防ぎます
+polygonSeries.events.on("datavalidated", () => {
+updateMapColors();
+});
 
 // 最初の国へ「強制移動」
 setTimeout(() => {
@@ -90,15 +96,15 @@ showInputMode();
 }
 
 function updateMapColors() {
+if (!polygonSeries) return;
 polygonSeries.mapPolygons.each(p => {
 const cid = p.dataItem.dataContext.id;
-if (cid === currentCountry.id) p.fill = am4core.color("#ff4444");
+if (currentCountry && cid === currentCountry.id) p.fill = am4core.color("#ff4444");
 else if (solvedIds.includes(cid)) p.fill = am4core.color("#00d1b2");
 else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯【核心の修正】サボるシステムに無理やり「中央へバンッ！」を実行させる関数
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
@@ -110,16 +116,13 @@ targetPolygon = p;
 });
 
 if (targetPolygon) {
-// 🔥 システムの「サボり」を防ぐため、一瞬だけ全体表示に戻してから…
 chart.goHome(0);
 
-// 🚀 その直後に、狙った国へ強制的にマックスズーム（普通の国は7倍、デカい国は3倍）
 let zoomLevel = 7;
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 3;
 }
 
-// 第3引数を「true」にすることで、強制的にその国が画面中央にセットされます
 chart.zoomToMapObject(targetPolygon, zoomLevel, true);
 }
 }
@@ -168,7 +171,6 @@ currentIndex++;
 
 nextQuestionData();
 
-// 次の国へ行くときも、強制中央移動を発動！
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
@@ -202,5 +204,6 @@ checkAnswer();
 }
 }
 });
+
 
 
