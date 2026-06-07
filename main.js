@@ -13,6 +13,7 @@ const countries = [
 { id: "AU", name: "オーストラリア", pop: "2600", unit: "万人", area: "Oceania" }, { id: "PG", name: "パプアニューギニア", pop: "1000", unit: "万人", area: "Oceania" }, { id: "NZ", name: "ニュージーランド", pop: "510", unit: "万人", area: "Oceania" }, { id: "FJ", name: "フィジー", pop: "92", unit: "万人", area: "Oceania" }, { id: "KI", name: "キリバス", pop: "13", unit: "万人", area: "Oceania" }, { id: "TO", name: "トンガ", pop: "10", unit: "万人", area: "Oceania" }, { id: "NR", name: "ナウル", pop: "1.2", unit: "万人", area: "Oceania" }, { id: "TV", name: "ツバル", pop: "1", unit: "万人", area: "Oceania" }
 ];
 
+
 let chart, polygonSeries, pinSeries;
 let currentList = [];
 let currentIndex = 0;
@@ -52,7 +53,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-chart.zoomDuration = 700;
+chart.zoomDuration = 800; // じわっと動くように少しゆっくりに
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -62,26 +63,27 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 📍【大改造】国の上に「Googleマップ風のピン」を表示する設定
+// 📍 Googleマップ風のピンを表示するシリーズ
 pinSeries = chart.series.push(new am4maps.MapImagesSeries());
 let pinTemplate = pinSeries.mapImages.template;
 pinTemplate.propertyFields.latitude = "latitude";
 pinTemplate.propertyFields.longitude = "longitude";
 
-// 📌 Googleマップ風の「逆しずく型」を描く魔法のコード
 let pinIcon = pinTemplate.createChild(am4core.Sprite);
 pinIcon.path = "M12,2C8.13,2,5,5.13,5,9c0,5.25,7,13,7,13s7-7.75,7-13C19,5.13,15.87,2,12,2z M12,11.5c-1.38,0-2.5-1.12-2.5-2.5s1.12-2.5,2.5-2.5s2.5,1.12,2.5,2.5S13.38,11.5,12,11.5z";
-pinIcon.fill = am4core.color("#ea4335"); // Googleマップと同じキレイな赤色
-pinIcon.stroke = am4core.color("#ffffff"); // ピンのフチを白にしてクッキリさせる
-pinIcon.strokeWidth = 1;
+pinIcon.fill = am4core.color("#ea4335");
+pinIcon.stroke = am4core.color("#ffffff");
+pinIcon.strokeWidth = 1.5;
 
-// ピンの尖った先端が、ちょうど国の中心（座標）を指すように位置を微調整
-pinIcon.width = 24;
-pinIcon.height = 24;
+// ピンが目立つように少し大きく設定(32x32)
+pinIcon.width = 32;
+pinIcon.height = 32;
 pinIcon.horizontalCenter = "middle";
 pinIcon.verticalCenter = "bottom";
 
-// 1問目のデータをセット
+// ピンが他の地図データの下に隠れないように最前面へ
+pinSeries.zIndex = 100;
+
 nextQuestionData();
 
 // 最初の国へ強制移動
@@ -89,7 +91,7 @@ setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 1200);
+}, 1500);
 }
 
 function nextQuestionData() {
@@ -108,25 +110,54 @@ document.getElementById("target-name").innerText = "ピンが刺さっている�
 showInputMode();
 }
 
+// 🎯【ピン消失バグを解決】極小国の座標を「手動でピンポイント指定」する辞書
+const specialCoords = {
+"SG": { lat: 1.35, lon: 103.82 }, // シンガポール
+"VA": { lat: 41.90, lon: 12.45 }, // バチカン市国
+"LU": { lat: 49.81, lon: 6.13 }, // ルクセンブルク
+"CY": { lat: 35.12, lon: 33.42 }, // キプロス
+"BN": { lat: 4.53, lon: 114.72 }, // ブルネイ
+"FJ": { lat: -17.71, lon: 178.06 },// フィジ－
+"KI": { lat: -1.87, lon: -157.36 },// キリバス
+"TO": { lat: -21.17, lon: -175.20 },// トンガ
+"NR": { lat: -0.52, lon: 166.93 }, // ナウル
+"TV": { lat: -7.10, lon: 177.64 }, // ツバル
+"JM": { lat: 18.10, lon: -77.29 } // ジャマイカ
+};
+
 function updateMapColorsAndPin() {
-pinSeries.data = [];
+pinSeries.data = []; // ピンをリセット
+
+let pinAdded = false;
+
+// もし特殊な小さい国なら、手動の正確な座標でピンを即座に刺す
+if (specialCoords[currentCountry.id]) {
+pinSeries.data.push({
+latitude: specialCoords[currentCountry.id].lat,
+longitude: specialCoords[currentCountry.id].lon
+});
+pinAdded = true;
+}
 
 polygonSeries.mapPolygons.each(p => {
 const cid = p.dataItem.dataContext.id;
 if (cid === currentCountry.id) {
 p.fill = am4core.color("#ff4444");
 
-// 国の中心にGoogleマップ風ピンを刺す
+// 普通の国なら、自動計算された位置にピンを刺す
+if (!pinAdded) {
 pinSeries.data.push({
 latitude: p.visualLatitude,
 longitude: p.visualLongitude
 });
+}
 }
 else if (solvedIds.includes(cid)) p.fill = am4core.color("#00d1b2");
 else p.fill = am4core.color("#aaaaaa");
 });
 }
 
+// 🎯【ウルトラ限界突破ズーム】極小国を画面いっぱいに引き寄せる
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
@@ -140,16 +171,23 @@ targetPolygon = p;
 if (targetPolygon) {
 chart.goHome(0);
 
-let zoomLevel = 10;
+let zoomLevel = 12; // 通常の国もかなり近づける（10→12）
 
+// 🗺️ 巨大な国・中くらいの国の調整
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR" || countryId === "AU") {
 zoomLevel = 3;
 } else if (countryId === "IN" || countryId === "KZ" || countryId === "DZ" || countryId === "CD") {
 zoomLevel = 5;
+} else if (countryId === "JP" || countryId === "ZA" || countryId === "FR" || countryId === "DE") {
+zoomLevel = 8;
 }
 
-if (countryId === "SG" || countryId === "VA" || countryId === "LU" || countryId === "CY" || countryId === "BN" || countryId === "FJ" || countryId === "KI" || countryId === "TO" || countryId === "NR" || countryId === "TV" || countryId === "JM") {
-zoomLevel = 25;
+// 🔍【新設定】点にしか見えない極小国は「50倍〜150倍」の神ズーム！
+if (countryId === "SG" || countryId === "LU" || countryId === "CY" || countryId === "BN" || countryId === "JM") {
+zoomLevel = 60; // 60倍拡大！
+}
+if (countryId === "VA" || countryId === "NR" || countryId === "TV" || countryId === "KI" || countryId === "TO" || countryId === "FJ") {
+zoomLevel = 150; // バチカンやナウル、ツバルなどは「150倍」で強制的に画面いっぱいに！
 }
 
 chart.zoomToMapObject(targetPolygon, zoomLevel, true);
@@ -204,7 +242,7 @@ setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 400);
+}, 500);
 }
 }
 
@@ -234,5 +272,4 @@ checkAnswer();
 }
 }
 });
-
 
