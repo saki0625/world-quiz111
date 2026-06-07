@@ -39,6 +39,11 @@ solvedIds = [];
 document.getElementById("score").innerText = "0";
 
 if (chart) chart.dispose();
+
+// 1. 先にデータを確定させる
+currentCountry = currentList[currentIndex];
+
+// 2. 地図を作る
 initMap();
 }
 
@@ -52,7 +57,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-chart.zoomDuration = 500; // すばやく動くように調整
+chart.zoomDuration = 600;
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -62,13 +67,23 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 🚀【バグ修正】地図が読み込み完了した瞬間に「色塗り」と「ズーム」を同時に発動させる！
-polygonSeries.events.on("inited", () => {
-nextQuestionData();
+// 🚀【ここが超重要】ややこしいイベント待ちはせず、ここで即座に画面の文字と色を確定させる！
+document.getElementById("current-country-num").innerText = currentIndex + 1;
+document.getElementById("question-text").innerText = "国名";
+document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
+showInputMode();
+
+// 地図のポリゴンが描画されるタイミングで色を塗る
+polygonSeries.events.on("validated", () => {
+updateMapColors();
+});
+
+// 1問目の国へ、1秒後に「絶対に」自動ズームさせる
+setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-});
+}, 1000);
 }
 
 function nextQuestionData() {
@@ -88,15 +103,22 @@ showInputMode();
 }
 
 function updateMapColors() {
+if (!polygonSeries) return;
 polygonSeries.mapPolygons.each(p => {
 const cid = p.dataItem.dataContext.id;
-if (cid === currentCountry.id) p.fill = am4core.color("#ff4444");
-else if (solvedIds.includes(cid)) p.fill = am4core.color("#00d1b2");
-else p.fill = am4core.color("#aaaaaa");
+if (currentCountry && cid === currentCountry.id) {
+p.fill = am4core.color("#ff4444"); // 1問目から絶対に赤く塗る
+}
+else if (solvedIds.includes(cid)) {
+p.fill = am4core.color("#00d1b2");
+}
+else {
+p.fill = am4core.color("#aaaaaa");
+}
 });
 }
 
-// 🎯【超安定】狙った国を確実に画面中央に引き寄せる関数
+// 🎯【超安定】サボらせず確実に画面中央に引き寄せるズーム関数
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
@@ -110,7 +132,6 @@ targetPolygon = p;
 if (targetPolygon) {
 chart.goHome(0);
 
-// 拡大率は見やすい7倍に固定（巨大な国は3倍）
 let zoomLevel = 7;
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 3;
