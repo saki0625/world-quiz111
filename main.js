@@ -39,11 +39,6 @@ solvedIds = [];
 document.getElementById("score").innerText = "0";
 
 if (chart) chart.dispose();
-
-// 1. 先にデータを確定させる
-currentCountry = currentList[currentIndex];
-
-// 2. 地図を作る
 initMap();
 }
 
@@ -57,7 +52,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-chart.zoomDuration = 600;
+chart.zoomDuration = 700; // 移動スピードを少しキビキビに
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -67,23 +62,15 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 🚀【ここが超重要】ややこしいイベント待ちはせず、ここで即座に画面の文字と色を確定させる！
-document.getElementById("current-country-num").innerText = currentIndex + 1;
-document.getElementById("question-text").innerText = "国名";
-document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
-showInputMode();
+// 1問目のデータをセット
+nextQuestionData();
 
-// 地図のポリゴンが描画されるタイミングで色を塗る
-polygonSeries.events.on("validated", () => {
-updateMapColors();
-});
-
-// 1問目の国へ、1秒後に「絶対に」自動ズームさせる
+// 最初の国へ「強制移動」
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 1000);
+}, 1200);
 }
 
 function nextQuestionData() {
@@ -103,22 +90,15 @@ showInputMode();
 }
 
 function updateMapColors() {
-if (!polygonSeries) return;
 polygonSeries.mapPolygons.each(p => {
 const cid = p.dataItem.dataContext.id;
-if (currentCountry && cid === currentCountry.id) {
-p.fill = am4core.color("#ff4444"); // 1問目から絶対に赤く塗る
-}
-else if (solvedIds.includes(cid)) {
-p.fill = am4core.color("#00d1b2");
-}
-else {
-p.fill = am4core.color("#aaaaaa");
-}
+if (cid === currentCountry.id) p.fill = am4core.color("#ff4444");
+else if (solvedIds.includes(cid)) p.fill = am4core.color("#00d1b2");
+else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯【超安定】サボらせず確実に画面中央に引き寄せるズーム関数
+// 🎯【核心の修正】サボるシステムに無理やり「中央へバンッ！」を実行させる関数
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
@@ -130,13 +110,16 @@ targetPolygon = p;
 });
 
 if (targetPolygon) {
+// 🔥 システムの「サボり」を防ぐため、一瞬だけ全体表示に戻してから…
 chart.goHome(0);
 
+// 🚀 その直後に、狙った国へ強制的にマックスズーム（普通の国は7倍、デカい国は3倍）
 let zoomLevel = 7;
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 3;
 }
 
+// 第3引数を「true」にすることで、強制的にその国が画面中央にセットされます
 chart.zoomToMapObject(targetPolygon, zoomLevel, true);
 }
 }
@@ -185,9 +168,12 @@ currentIndex++;
 
 nextQuestionData();
 
+// 次の国へ行くときも、強制中央移動を発動！
+setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
+}, 400);
 }
 }
 
