@@ -65,7 +65,7 @@ template.strokeWidth = 0.5;
 // 1問目のデータをセット
 nextQuestionData();
 
-// 🔥【超強力修正】地図が画面に出てから1.2秒後に「絶対に強制ズーム」させる
+// 地図が表示されてから確実に中央へバンッ！
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
@@ -98,22 +98,27 @@ else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯 対象の国を「確実に」画面中央にばんっと引き寄せる関数
+// 🎯【超強力修正版】どの国でも「絶対に」見つけ出して画面中央にバンッする関数
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
-let dataItem = polygonSeries.getDataItemById(countryId);
-if (dataItem && dataItem.mapPolygon) {
-let polygon = dataItem.mapPolygon;
+let targetPolygon = null;
 
-// 巨大な国は2倍、普通の国は5倍にズーム
+// 地図上の全ポリゴンを1個ずつループして、一致するIDの国を力技で探す
+polygonSeries.mapPolygons.each(p => {
+if (p.dataItem && p.dataItem.dataContext && p.dataItem.dataContext.id === countryId) {
+targetPolygon = p;
+}
+});
+
+// 見つかったら絶対にズームする
+if (targetPolygon) {
 let zoomLevel = 5;
+// 巨大な国ははみ出さないように倍率を下げる
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 2;
 }
-
-// 画面中央へ強制移動
-chart.zoomToMapObject(polygon, zoomLevel, true);
+chart.zoomToMapObject(targetPolygon, zoomLevel, true);
 }
 }
 
@@ -161,7 +166,7 @@ currentIndex++;
 
 nextQuestionData();
 
-// 🔥【超強力修正】次の国へ行くときも、0.3秒だけ待って確実に「中央へバンッ」と移動させる
+// 次の国へ行くときも、0.3秒待って確実に中央へバンッ！
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
@@ -195,6 +200,5 @@ checkAnswer();
 }
 }
 });
-
 
 
