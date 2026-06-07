@@ -14,7 +14,7 @@ const countries = [
 ];
 
 
-let chart, polygonSeries, pinSeries;
+let chart, polygonSeries;
 let currentList = [];
 let currentIndex = 0;
 let currentCountry = null;
@@ -53,7 +53,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-chart.zoomDuration = 800; // じわっと動くように少しゆっくりに
+chart.zoomDuration = 700; // 移動スピードを少しキビキビに
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -63,35 +63,15 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 📍 Googleマップ風のピンを表示するシリーズ
-pinSeries = chart.series.push(new am4maps.MapImagesSeries());
-let pinTemplate = pinSeries.mapImages.template;
-pinTemplate.propertyFields.latitude = "latitude";
-pinTemplate.propertyFields.longitude = "longitude";
-
-let pinIcon = pinTemplate.createChild(am4core.Sprite);
-pinIcon.path = "M12,2C8.13,2,5,5.13,5,9c0,5.25,7,13,7,13s7-7.75,7-13C19,5.13,15.87,2,12,2z M12,11.5c-1.38,0-2.5-1.12-2.5-2.5s1.12-2.5,2.5-2.5s2.5,1.12,2.5,2.5S13.38,11.5,12,11.5z";
-pinIcon.fill = am4core.color("#ea4335");
-pinIcon.stroke = am4core.color("#ffffff");
-pinIcon.strokeWidth = 1.5;
-
-// ピンが目立つように少し大きく設定(32x32)
-pinIcon.width = 32;
-pinIcon.height = 32;
-pinIcon.horizontalCenter = "middle";
-pinIcon.verticalCenter = "bottom";
-
-// ピンが他の地図データの下に隠れないように最前面へ
-pinSeries.zIndex = 100;
-
+// 1問目のデータをセット
 nextQuestionData();
 
-// 最初の国へ強制移動
+// 最初の国へ「強制移動」
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 1500);
+}, 1200);
 }
 
 function nextQuestionData() {
@@ -104,60 +84,22 @@ quizMode = "name";
 isMistakenInThisTurn = false;
 document.getElementById("current-country-num").innerText = currentIndex + 1;
 
-updateMapColorsAndPin();
+updateMapColors();
 document.getElementById("question-text").innerText = "国名";
-document.getElementById("target-name").innerText = "ピンが刺さっている赤色の国はどこ？";
+document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
 showInputMode();
 }
 
-// 🎯【ピン消失バグを解決】極小国の座標を「手動でピンポイント指定」する辞書
-const specialCoords = {
-"SG": { lat: 1.35, lon: 103.82 }, // シンガポール
-"VA": { lat: 41.90, lon: 12.45 }, // バチカン市国
-"LU": { lat: 49.81, lon: 6.13 }, // ルクセンブルク
-"CY": { lat: 35.12, lon: 33.42 }, // キプロス
-"BN": { lat: 4.53, lon: 114.72 }, // ブルネイ
-"FJ": { lat: -17.71, lon: 178.06 },// フィジ－
-"KI": { lat: -1.87, lon: -157.36 },// キリバス
-"TO": { lat: -21.17, lon: -175.20 },// トンガ
-"NR": { lat: -0.52, lon: 166.93 }, // ナウル
-"TV": { lat: -7.10, lon: 177.64 }, // ツバル
-"JM": { lat: 18.10, lon: -77.29 } // ジャマイカ
-};
-
-function updateMapColorsAndPin() {
-pinSeries.data = []; // ピンをリセット
-
-let pinAdded = false;
-
-// もし特殊な小さい国なら、手動の正確な座標でピンを即座に刺す
-if (specialCoords[currentCountry.id]) {
-pinSeries.data.push({
-latitude: specialCoords[currentCountry.id].lat,
-longitude: specialCoords[currentCountry.id].lon
-});
-pinAdded = true;
-}
-
+function updateMapColors() {
 polygonSeries.mapPolygons.each(p => {
 const cid = p.dataItem.dataContext.id;
-if (cid === currentCountry.id) {
-p.fill = am4core.color("#ff4444");
-
-// 普通の国なら、自動計算された位置にピンを刺す
-if (!pinAdded) {
-pinSeries.data.push({
-latitude: p.visualLatitude,
-longitude: p.visualLongitude
-});
-}
-}
+if (cid === currentCountry.id) p.fill = am4core.color("#ff4444");
 else if (solvedIds.includes(cid)) p.fill = am4core.color("#00d1b2");
 else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯【ウルトラ限界突破ズーム】極小国を画面いっぱいに引き寄せる
+// 🎯【核心の修正】サボるシステムに無理やり「中央へバンッ！」を実行させる関数
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
@@ -169,27 +111,16 @@ targetPolygon = p;
 });
 
 if (targetPolygon) {
+// 🔥 システムの「サボり」を防ぐため、一瞬だけ全体表示に戻してから…
 chart.goHome(0);
 
-let zoomLevel = 12; // 通常の国もかなり近づける（10→12）
-
-// 🗺️ 巨大な国・中くらいの国の調整
-if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR" || countryId === "AU") {
+// 🚀 その直後に、狙った国へ強制的にマックスズーム（普通の国は7倍、デカい国は3倍）
+let zoomLevel = 7;
+if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 3;
-} else if (countryId === "IN" || countryId === "KZ" || countryId === "DZ" || countryId === "CD") {
-zoomLevel = 5;
-} else if (countryId === "JP" || countryId === "ZA" || countryId === "FR" || countryId === "DE") {
-zoomLevel = 8;
 }
 
-// 🔍【新設定】点にしか見えない極小国は「50倍〜150倍」の神ズーム！
-if (countryId === "SG" || countryId === "LU" || countryId === "CY" || countryId === "BN" || countryId === "JM") {
-zoomLevel = 60; // 60倍拡大！
-}
-if (countryId === "VA" || countryId === "NR" || countryId === "TV" || countryId === "KI" || countryId === "TO" || countryId === "FJ") {
-zoomLevel = 150; // バチカンやナウル、ツバルなどは「150倍」で強制的に画面いっぱいに！
-}
-
+// 第3引数を「true」にすることで、強制的にその国が画面中央にセットされます
 chart.zoomToMapObject(targetPolygon, zoomLevel, true);
 }
 }
@@ -238,16 +169,16 @@ currentIndex++;
 
 nextQuestionData();
 
+// 次の国へ行くときも、強制中央移動を発動！
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 500);
+}, 400);
 }
 }
 
 function showFinalResult() {
-pinSeries.data = [];
 chart.goHome();
 const resScreen = document.getElementById("result-screen");
 resScreen.style.display = "flex";
@@ -272,4 +203,5 @@ checkAnswer();
 }
 }
 });
+
 
