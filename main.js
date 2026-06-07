@@ -62,7 +62,7 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 🗺️ 右下のミニマップ機能（Overview Map）
+// 🗺️【安全・安心】右下に世界地図全体の場所がわかるミニマップを表示！
 chart.overviewMap = new am4maps.OverviewMap();
 chart.overviewMap.series.push(polygonSeries);
 chart.overviewMap.align = "right";
@@ -79,7 +79,7 @@ nextQuestionData();
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
-updateMapColors();
+updateMapColors(); // 1問目から絶対に赤く光らせる
 }
 }, 1200);
 }
@@ -96,62 +96,17 @@ document.getElementById("current-country-num").innerText = currentIndex + 1;
 
 updateMapColors();
 document.getElementById("question-text").innerText = "国名";
-document.getElementById("target-name").innerText = "赤く光っている国（または●の場所）はどこ？";
+document.getElementById("target-name").innerText = "赤く光っている国はどこ？";
 showInputMode();
 }
 
-// 🔬 極小国の中心を強調するための手動ズーム＆丸ポチ用のサイズ設定
-const smallCountrySettings = {
-"SG": { zoom: 80, circle: true, radius: 4 }, // シンガポール
-"VA": { zoom: 150, circle: true, radius: 2 }, // バチカン
-"LU": { zoom: 40, circle: true, radius: 6 }, // ルクセンブルク
-"CY": { zoom: 25, circle: false }, // キプロス（島が見えるので丸は無し）
-"BN": { zoom: 60, circle: true, radius: 4 }, // ブルネイ
-"JM": { zoom: 25, circle: false }, // ジャマイカ
-"FJ": { zoom: 40, circle: true, radius: 6 }, // フィジー
-"KI": { zoom: 120, circle: true, radius: 3 }, // キリバス
-"TO": { zoom: 120, circle: true, radius: 3 }, // トンガ
-"NR": { zoom: 150, circle: true, radius: 2 }, // ナウル
-"TV": { zoom: 150, circle: true, radius: 2 }, // ツバル
-"SB": { zoom: 30, circle: true, radius: 6 }, // ソロモン諸島
-"VU": { zoom: 40, circle: true, radius: 5 }, // バヌアツ
-"WS": { zoom: 80, circle: true, radius: 4 } // サモア
-};
-
 function updateMapColors() {
 if (!polygonSeries) return;
-
 polygonSeries.mapPolygons.each(p => {
 const cid = p.dataItem.dataContext.id;
-
-// 既存の丸（チルドレン）が残っていたらバグ予防のために一旦全部消す
-p.children.each(child => {
-if (child instanceof am4core.Circle) {
-child.dispose();
-}
-});
-
-if (currentCountry && cid === currentCountry.id) {
-// ① 国全体を赤く光らせる
-p.fill = am4core.color("#ff4444");
-
-// ② もし小さい国なら、その国の真ん中に「目印の赤い丸●」を浮かび上がらせる！
-if (smallCountrySettings[cid] && smallCountrySettings[cid].circle) {
-let circle = p.createChild(am4core.Circle);
-circle.radius = smallCountrySettings[cid].radius; // 国に合わせた見えやすいサイズ
-circle.fill = am4core.color("#d32f2f"); // ちょっと濃い目のハッキリした赤
-circle.stroke = am4core.color("#ffffff"); // 白フチをつけて見やすく！
-circle.strokeWidth = 1;
-circle.align = "center";
-circle.valign = "middle";
-}
-}
-else if (solvedIds.includes(cid)) {
-p.fill = am4core.color("#00d1b2"); // 正解済みの国はきみどり
-}
-else {
-p.fill = am4core.color("#aaaaaa"); // 通常はグレー
-}
+if (currentCountry && cid === currentCountry.id) p.fill = am4core.color("#ff4444");
+else if (solvedIds.includes(cid)) p.fill = am4core.color("#00d1b2");
+else p.fill = am4core.color("#aaaaaa");
 });
 }
 
@@ -171,17 +126,13 @@ chart.goHome(0);
 // 基本の拡大率は7倍
 let zoomLevel = 7;
 
-// 巨大な国は3倍
+// 巨大な国は画面からはみ出さないように3倍
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR" || countryId === "AU") {
 zoomLevel = 3;
 }
-// 日本やニュージーランドなどは20倍
-else if (countryId === "JP" || countryId === "NZ" || countryId === "IS") {
-zoomLevel = 20;
-}
-// 小さい国はあらかじめ決めた特大倍率にする
-else if (smallCountrySettings[countryId]) {
-zoomLevel = smallCountrySettings[countryId].zoom;
+// 小さい国は見えやすいように自動で25倍までグーンと大きくズーム！
+else if (countryId === "SG" || countryId === "VA" || countryId === "LU" || countryId === "BN" || countryId === "FJ" || countryId === "TV" || countryId === "NR") {
+zoomLevel = 25;
 }
 
 chart.zoomToMapObject(targetPolygon, zoomLevel, true);
@@ -265,4 +216,5 @@ checkAnswer();
 }
 }
 });
+
 
