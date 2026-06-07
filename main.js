@@ -52,7 +52,7 @@ function initMap() {
 chart = am4core.create("chartdiv", am4maps.MapChart);
 chart.geodata = am4geodata_worldLow;
 chart.projection = new am4maps.projections.Miller();
-chart.zoomDuration = 700;
+chart.zoomDuration = 500; // すばやく動くように調整
 
 polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
 polygonSeries.useGeodata = true;
@@ -62,15 +62,13 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 1問目のデータをセット
+// 🚀【バグ修正】地図が読み込み完了した瞬間に「色塗り」と「ズーム」を同時に発動させる！
+polygonSeries.events.on("inited", () => {
 nextQuestionData();
-
-// 最初の国へ強制移動
-setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 1200);
+});
 }
 
 function nextQuestionData() {
@@ -98,7 +96,7 @@ else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯【核心の修正】サボるシステムに無理やり「中央へバンッ！」を実行させる関数
+// 🎯【超安定】狙った国を確実に画面中央に引き寄せる関数
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
@@ -112,6 +110,7 @@ targetPolygon = p;
 if (targetPolygon) {
 chart.goHome(0);
 
+// 拡大率は見やすい7倍に固定（巨大な国は3倍）
 let zoomLevel = 7;
 if (countryId === "RU" || countryId === "CA" || countryId === "US" || countryId === "CN" || countryId === "BR") {
 zoomLevel = 3;
@@ -165,11 +164,9 @@ currentIndex++;
 
 nextQuestionData();
 
-setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 400);
 }
 }
 
