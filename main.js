@@ -63,33 +63,29 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 📍 ピンを表示するための安全な設定
+// 📍 ピン（目印）の設定
 pinSeries = chart.series.push(new am4maps.MapImagesSeries());
 let pinTemplate = pinSeries.mapImages.template;
 pinTemplate.propertyFields.latitude = "latitude";
 pinTemplate.propertyFields.longitude = "longitude";
 
-// 📌 エラーが絶対起きない、公式の「ピン型」アイコン
 let pinIcon = pinTemplate.createChild(am4core.MapPin);
-pinIcon.fill = am4core.color("#ea4335"); // Google風の赤色
+pinIcon.fill = am4core.color("#ea4335"); // 赤
 pinIcon.stroke = am4core.color("#ffffff"); // 白フチ
 pinIcon.strokeWidth = 1;
-pinIcon.radius = 12; // サイズ
+pinIcon.radius = 12;
 
 pinSeries.zIndex = 100;
 
-// 🔥【ここが超重要！】地図の準備が完全に終わってから、1問目をセットして色を塗る（これで1問目も絶対に光る！）
-polygonSeries.events.on("datavalidated", () => {
-if (currentIndex === 0 && currentList.length > 0) {
+// 🚀【超確実化】余計なイベント待ちは無し！即座に1問目をセットする
 nextQuestionData();
-// 最初の国へズーム
+
+// 地図が画面に描画されるのを少しだけ待ってから、確実に中央へドカン！
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 }
-}, 500);
-}
-});
+}, 1200);
 }
 
 function nextQuestionData() {
@@ -108,7 +104,7 @@ document.getElementById("target-name").innerText = "ピンが刺さっている�
 showInputMode();
 }
 
-// 小さい国の手動座標辞書
+// 小さい国の手動座標データ
 const specialCoords = {
 "SG": { lat: 1.35, lon: 103.82 },
 "VA": { lat: 41.90, lon: 12.45 },
@@ -125,7 +121,6 @@ const specialCoords = {
 
 function updateMapColorsAndPin() {
 pinSeries.data = [];
-
 let pinAdded = false;
 
 if (specialCoords[currentCountry.id]) {
@@ -153,7 +148,7 @@ else p.fill = am4core.color("#aaaaaa");
 });
 }
 
-// 🎯 小さい国は最高150倍まで拡大する神ズーム
+// 🎯 小さい国は最高150倍まで拡大するズーム
 function focusOnCountry(countryId) {
 if (!chart || !polygonSeries) return;
 
@@ -177,7 +172,6 @@ zoomLevel = 5;
 zoomLevel = 8;
 }
 
-// 🔍 極小国は超絶拡大！
 if (countryId === "SG" || countryId === "LU" || countryId === "CY" || countryId === "BN" || countryId === "JM") {
 zoomLevel = 60;
 }
