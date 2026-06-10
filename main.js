@@ -62,16 +62,13 @@ template.fill = am4core.color("#aaaaaa");
 template.stroke = am4core.color("#ffffff");
 template.strokeWidth = 0.5;
 
-// 1問目のデータをセット
 nextQuestionData();
 
-// 最初の国へ「強制移動」
+// 最初の国へ
 setTimeout(() => {
 if (currentCountry) {
 focusOnCountry(currentCountry.id);
 
-// 🔥【大本命の修正】ズームが完了したこの瞬間に、強制的に赤色を上書きする！
-// 地図の準備が完全に終わった後なので、絶対にグレーに負けません。
 updateMapColors();
 }
 }, 1200);
